@@ -8,6 +8,7 @@ import { createUntitledNotebook } from '../content/data';
 import { updateNotebookConnection } from '../kusto/connections/notebookConnection';
 import { updateCache } from '../cache';
 import { GlobalMementoKeys } from '../constants';
+import { IConnectionInfo } from '../kusto/connections/types';
 
 export class ClusterTreeView {
     constructor(private readonly clusterExplorer: KustoClusterExplorer) {}
@@ -99,21 +100,18 @@ export class ClusterTreeView {
 
     private async setDocumentConnection(database: DatabaseNode) {
         if(database.parent.info.type == "azAuth"){
-            var info = {
+            const info: IConnectionInfo = {
                 id: database.parent.info.id,
                 displayName: database.parent.info.displayName,
                 type: database.parent.info.type,
                 cluster: database.parent.info.cluster,
                 database: database.database.name
             }
-            var docs = workspace.notebookDocuments;
-            console.log(docs);
-            const document = workspace.notebookDocuments[0];
-            //const document = workspace.notebookDocuments.find((item) => item.uri.toString() === uri!.toString());
-            if(document){
+
+            workspace.notebookDocuments.forEach(async (document)=>{
                 updateNotebookConnection(document, info);
                 await updateCache(GlobalMementoKeys.lastUsedConnection, info);
-            }   
+            });
         }
     }
 

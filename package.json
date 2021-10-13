@@ -118,7 +118,7 @@
             {
                 "command": "kusto.setDocumentConnection",
                 "title": "Set Connection",
-                "icon": "$(add)"
+                "icon": "$(plug)"
             }
         ],
         "languages": [
