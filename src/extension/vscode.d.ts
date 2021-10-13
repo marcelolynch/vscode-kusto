@@ -11558,7 +11558,9 @@ declare module 'vscode' {
 		 * A code-cell is source that can be {@link NotebookController executed} and that
 		 * produces {@link NotebookCellOutput output}.
 		 */
-		Code = 2
+		Code = 2,
+
+		Function = 3,
 	}
 
 	/**

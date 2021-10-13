@@ -14,6 +14,8 @@ export class Client implements IDisposable {
     private readonly disposables: IDisposable[] = [];
     private readonly kustoClient: Promise<IKustoClient>;
     private readonly connection: IConnection<IConnectionInfo>;
+    private readonly macros = {};
+
     constructor(
         private readonly document: NotebookDocument | TextDocument,
         public readonly connectionInfo: IConnectionInfo
@@ -62,12 +64,59 @@ export class Client implements IDisposable {
         clientMap.set(document, promise);
         return promise;
     }
+    
+    private splitOnFirst(s, separator) {   
+        const separatorIndex = s.indexOf(separator);
+
+        if (separatorIndex === -1) {
+            return s;
+        }
+    
+        return [
+            s.slice(0, separatorIndex),
+            s.slice(separatorIndex + separator.length)
+        ];
+    }
+
+    private getKey(q : string) : string {
+        return q.split(/\[|\]/)[1];
+    }   
+
+    private preprocessQuery(query: string) : string {
+        var macros = this.macros;
+        if (query.startsWith('//!macro[')) {
+            var splits = this.splitOnFirst(query,'\n');
+            var definition = splits[0];
+            var body = splits[1];
+            var key = this.getKey(definition);
+            macros[key] = body;
+            return ""//`print "Macro ${key} defined"`;
+        }
+        else {
+            var hack = ""
+            for (let line of query.split(/\r?\n/)) {
+                if (line.startsWith('//!import[')) {
+                    var key = this.getKey(line);
+                    if (key in macros) {
+                        hack += macros[key]
+                        hack += '\n'
+                    }
+                }
+            }
+
+            return hack + query;
+        }
+        
+        return query;
+    }
     public async execute(query: string): Promise<KustoResponseDataSet> {
+        query = this.preprocessQuery(query);
         const client = await this.kustoClient;
         if (this.connectionInfo.type === 'appInsights') {
             return client.executeQueryV1('', query);
         } else {
             const database = 'database' in this.connectionInfo ? this.connectionInfo.database : '';
+            console.log(query);
             return client.execute(database || '', query);
         }
     }

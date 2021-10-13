@@ -66,8 +66,10 @@ function isAJupyterCellThatCanBeIgnored(document: TextDocument) {
     return false;
 }
 function fixJupyterNotebook(document: TextDocument): TextDocument {
+    let text = document.getText();
+    
     if (isJupyterNotebook(document)) {
-        const text = document.getText().replace('%%kql', '//kql').replace('%kql ', '     ');
+        text = text.replace('%%kql', '//kql').replace('%kql ', '     ');
         return TextDocument.create(document.uri.toString(), 'kusto', document.version, text);
     }
     return document;
