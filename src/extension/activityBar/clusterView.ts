@@ -1,10 +1,13 @@
-import { commands, window } from 'vscode';
+import { commands, window , workspace} from 'vscode';
 import { registerDisposable } from '../utils';
 import { ClusterNode, DatabaseNode, KustoClusterExplorer, TableNode } from './treeData';
 import { addNewConnection } from '../kusto/connections/management';
 import { getCachedConnections, onConnectionChanged } from '../kusto/connections/storage';
 import { fromConnectionInfo } from '../kusto/connections';
 import { createUntitledNotebook } from '../content/data';
+import { updateNotebookConnection } from '../kusto/connections/notebookConnection';
+import { updateCache } from '../cache';
+import { GlobalMementoKeys } from '../constants';
 
 export class ClusterTreeView {
     constructor(private readonly clusterExplorer: KustoClusterExplorer) {}
@@ -22,6 +25,7 @@ export class ClusterTreeView {
         registerDisposable(commands.registerCommand('kusto.removeConnection', handler.removeConnection, handler));
         registerDisposable(commands.registerCommand('kusto.refreshNode', handler.onRefreshNode, handler));
         registerDisposable(commands.registerCommand('kusto.createNotebook', handler.createNotebook, handler));
+        registerDisposable(commands.registerCommand('kusto.setDocumentConnection', handler.setDocumentConnection, handler));
         onConnectionChanged((e) =>
             e.change === 'added'
                 ? clusterExplorer.addConnection(e.connection)
@@ -92,4 +96,25 @@ export class ClusterTreeView {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await createUntitledNotebook({ ...connectionInfo, database } as any, cellCode);
     }
+
+    private async setDocumentConnection(database: DatabaseNode) {
+        if(database.parent.info.type == "azAuth"){
+            var info = {
+                id: database.parent.info.id,
+                displayName: database.parent.info.displayName,
+                type: database.parent.info.type,
+                cluster: database.parent.info.cluster,
+                database: database.database.name
+            }
+            var docs = workspace.notebookDocuments;
+            console.log(docs);
+            const document = workspace.notebookDocuments[0];
+            //const document = workspace.notebookDocuments.find((item) => item.uri.toString() === uri!.toString());
+            if(document){
+                updateNotebookConnection(document, info);
+                await updateCache(GlobalMementoKeys.lastUsedConnection, info);
+            }   
+        }
+    }
+
 }

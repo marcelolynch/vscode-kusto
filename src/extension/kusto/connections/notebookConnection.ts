@@ -214,7 +214,7 @@ function getConnectionInfoFromJupyterNotebook(document: NotebookDocument): IConn
         return;
     }
 }
-async function updateNotebookConnection(document: NotebookDocument, info: IConnectionInfo) {
+export async function updateNotebookConnection(document: NotebookDocument, info: IConnectionInfo) {
     if (isJupyterNotebook(document) || !isKustoNotebook(document)) {
         console.error('oops');
         return;

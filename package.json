@@ -58,7 +58,8 @@
         "onCommand:kusto.exportNotebookAsScript",
         "onCommand:kusto.removeConnection",
         "onCommand:kusto.refreshNode",
-        "onCommand:kusto.changeDocumentConnection"
+        "onCommand:kusto.changeDocumentConnection",
+        "onCommand:kusto.setDocumentConnection"
     ],
     "main": "./out/extension/index.js",
     "browser": "./out/extension/browser.js",
@@ -113,6 +114,11 @@
                 "command": "kusto.refreshNode",
                 "title": "Refresh",
                 "icon": "$(refresh)"
+            },
+            {
+                "command": "kusto.setDocumentConnection",
+                "title": "Set Connection",
+                "icon": "$(add)"
             }
         ],
         "languages": [
@@ -261,6 +267,11 @@
                     "command": "kusto.createNotebook",
                     "when": "view == kustoExplorer && viewItem == table && kusto.useProposedApi",
                     "group": "inline@2"
+                },
+                {
+                    "command": "kusto.setDocumentConnection",
+                    "when": "view == kustoExplorer && viewItem == database",
+                    "group": "inline@3"
                 }
             ]
         },
