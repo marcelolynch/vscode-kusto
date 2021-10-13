@@ -18,6 +18,7 @@ import {
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { EngineSchema } from './schema';
 import { getNotebookUri } from './utils';
+import { macroFix } from './macro';
 
 const languageServersPerEngineSchemaAndDefaultDb = new Map<string, LanguageService>();
 const documentUriAndEngineSchemaAndDefaultDb = new Map<string, string>();
@@ -65,21 +66,23 @@ function isAJupyterCellThatCanBeIgnored(document: TextDocument) {
     }
     return false;
 }
-function fixJupyterNotebook(document: TextDocument): TextDocument {
+function fixJupyterNotebook(document: TextDocument): { document: TextDocument, lineOffset: number, characterOffset: number } {
     let text = document.getText();
-    
     if (isJupyterNotebook(document)) {
         text = text.replace('%%kql', '//kql').replace('%kql ', '     ');
-        return TextDocument.create(document.uri.toString(), 'kusto', document.version, text);
     }
-    return document;
+    let { fixedBlock, lineOffset, characterOffset } = macroFix(text);
+    return { document: TextDocument.create(document.uri.toString(), 'kusto', document.version, fixedBlock), lineOffset, characterOffset };
 }
+
 export async function getCompletions(document: TextDocument, position: Position): Promise<CompletionList> {
     const ls = getLanguageServer(document);
     if (isAJupyterCellThatCanBeIgnored(document)) {
         return { isIncomplete: false, items: [] };
     }
-    return ls.doComplete(fixJupyterNotebook(document), Position.create(position.line, position.character));
+    let { document: newDocument} = fixJupyterNotebook(document);
+    const completions = await ls.doComplete(newDocument, Position.create(position.line, position.character));
+    return completions;
 }
 export async function getValidations(
     document: TextDocument,
@@ -89,25 +92,42 @@ export async function getValidations(
     if (isAJupyterCellThatCanBeIgnored(document)) {
         return [];
     }
-    return ls.doValidation(fixJupyterNotebook(document), intervals);
+    let { document: newDocument, lineOffset, characterOffset } = fixJupyterNotebook(document);
+    intervals.forEach(i => {
+        i.start += characterOffset;
+        i.end += characterOffset;
+    });
+    const diagnostics = await ls.doValidation(newDocument, intervals);
+    let fixedDiagnostics: Diagnostic[] = [];
+    diagnostics.forEach(d => {
+        if (d.range.start.line - lineOffset < 0) {
+            // Skip this, it is happening in another cell.
+            return;
+        }
+        d.range.start = Position.create(d.range.start.line - lineOffset, d.range.start.character);
+        d.range.end = Position.create(d.range.end.line - lineOffset, d.range.end.character);
+        fixedDiagnostics.push(d);
+    });
+    return fixedDiagnostics;
 }
 export async function doHover(document: TextDocument, position: Position): Promise<Hover | undefined> {
     const ls = getLanguageServer(document);
-    return ls.doHover(fixJupyterNotebook(document), position);
+    let { document: newDocument, lineOffset} = fixJupyterNotebook(document);
+    return ls.doHover(newDocument, Position.create(position.line + lineOffset, position.character));
 }
 export async function doDocumentFormat(document: TextDocument): Promise<TextEdit[]> {
     const ls = getLanguageServer(document);
     if (isAJupyterCellThatCanBeIgnored(document)) {
         return [];
     }
-    return ls.doDocumentFormat(fixJupyterNotebook(document));
+    return ls.doDocumentFormat(fixJupyterNotebook(document).document);
 }
 export async function doRangeFormat(document: TextDocument, range: Range): Promise<TextEdit[]> {
     const ls = getLanguageServer(document);
     if (isAJupyterCellThatCanBeIgnored(document)) {
         return [];
     }
-    return ls.doRangeFormat(fixJupyterNotebook(document), range);
+    return ls.doRangeFormat(fixJupyterNotebook(document).document, range);
 }
 export async function doRename(
     document: TextDocument,
@@ -118,11 +138,13 @@ export async function doRename(
     if (isAJupyterCellThatCanBeIgnored(document)) {
         return;
     }
-    return ls.doRename(fixJupyterNotebook(document), position, newName);
+    let { document: newDocument, lineOffset } = fixJupyterNotebook(document);
+    const edit = await ls.doRename(newDocument, Position.create(position.line + lineOffset, position.character), newName);
+    return edit;
 }
 export async function doFolding(document: TextDocument): Promise<FoldingRange[]> {
     const ls = getLanguageServer(document);
-    return ls.doFolding(fixJupyterNotebook(document));
+    return ls.doFolding(fixJupyterNotebook(document).document);
 }
 
 export function disposeAllLanguageServers() {

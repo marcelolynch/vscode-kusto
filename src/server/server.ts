@@ -34,7 +34,7 @@ connection.console.log('Started connection');
 
 // Create a simple text document manager. The text document manager
 // supports full document sync only
-const documents = new TextDocuments(TextDocument);
+export const documents = new TextDocuments(TextDocument);
 
 connection.onInitialize((_params: InitializeParams) => {
     connection.console.log('On Initialize');
@@ -65,13 +65,13 @@ connection.onNotification('setSchema', async (msg: { engineSchema: EngineSchema;
 connection.onDidChangeConfiguration((_change) => {
     // Formatting support formatting options?
 });
-function isNotebookCell(document: TextDocument) {
+export function isNotebookCell(document: TextDocument) {
     return URI.parse(document.uri.toString()).scheme === 'vscode-notebook-cell';
 }
-function isKustoFile(document: TextDocument) {
+export function isKustoFile(document: TextDocument) {
     return !isNotebookCell(document) && document.languageId === 'kusto';
 }
-function isInteractiveDocument(document: TextDocument) {
+export function isInteractiveDocument(document: TextDocument) {
     if (!isNotebookCell(document)) {
         return false;
     }
