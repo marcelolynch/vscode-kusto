@@ -14,22 +14,18 @@ const matchMacro = (block: string): {name: string; block: string} | false => {
 
 // Scan through the whole document to search for the required macro.
 // Returns the macro block or false.
-let macroBlocks = {};
-
 const getMacroBlock = (macros: MacroMap): string | false => {
-    if (Object.keys(macroBlocks).length == 0)
-    {
-        for (const d of documents.all()){
-            // ignore irrelevant blocks
-            if (!d || isInteractiveDocument(d) || (!isNotebookCell(d) && !isKustoFile(d))) {
-                continue;
-            }
-    
-            // try to match this block with the macro name.
-            const macroResult = matchMacro(d.getText());
-            if (macroResult !== false && macros[macroResult.name]) {
-                macroBlocks[macroResult.name] = macroResult.block;
-            }
+    let macroBlocks = {};
+    for (const d of documents.all()){
+        // ignore irrelevant blocks
+        if (!d || isInteractiveDocument(d) || (!isNotebookCell(d) && !isKustoFile(d))) {
+            continue;
+        }
+
+        // try to match this block with the macro name.
+        const macroResult = matchMacro(d.getText());
+        if (macroResult !== false && macros[macroResult.name]) {
+            macroBlocks[macroResult.name] = macroResult.block;
         }
     }
 
@@ -78,8 +74,5 @@ export const macroFix = (block: string): { fixedBlock: string, lineOffset: numbe
             // TODO: macro import not found. Do something bad. 
         }
     }
-
-    console.log(block);
-    
     return { fixedBlock: block, lineOffset, characterOffset};
 }
